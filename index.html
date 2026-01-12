@@ -3,17 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>自由自在！画像4分割ツール</title>
+    <title>画像4分割ツール（横カット）</title>
     <style>
         :root {
             --primary-color: #333;
             --accent-color: #007AFF;
+            --all-dl-color: #ff9500;
             --line-color: #ff0055;
             --bg-color: #ffffff;
+            --warning-bg: #fff3cd;
+            --warning-text: #856404;
         }
 
         body {
-            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+            font-family: "Helvetica Neue", Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--primary-color);
             margin: 0;
@@ -23,17 +26,8 @@
             align-items: center;
         }
 
-        h1 {
-            font-size: 24px;
-            margin-bottom: 10px;
-        }
-
-        p.desc {
-            font-size: 14px;
-            color: #666;
-            margin-bottom: 20px;
-            text-align: center;
-        }
+        h1 { font-size: 24px; margin-bottom: 10px; }
+        p.desc { font-size: 14px; color: #666; margin-bottom: 20px; text-align: center; }
 
         /* Drop Zone */
         #drop-zone {
@@ -47,134 +41,112 @@
             align-items: center;
             flex-direction: column;
             cursor: pointer;
-            transition: background 0.3s, border-color 0.3s;
+            transition: background 0.3s;
             margin-bottom: 20px;
         }
-
-        #drop-zone.dragover {
-            background-color: #f0f8ff;
-            border-color: var(--accent-color);
-        }
-
-        #drop-zone p {
-            margin: 0;
-            font-weight: bold;
-            color: #888;
-        }
-
-        #file-input {
-            display: none;
-        }
+        #drop-zone.dragover { background-color: #f0f8ff; border-color: var(--accent-color); }
 
         /* Controls */
         .controls {
-            display: flex;
-            gap: 10px;
             margin-bottom: 20px;
-            display: none; /* 画像読み込み後に表示 */
-        }
-
-        button {
-            padding: 10px 20px;
-            border: 1px solid #ddd;
-            background: white;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.2s;
-        }
-
-        button:hover {
-            background: #f5f5f5;
-        }
-
-        button.active {
-            background: var(--accent-color);
-            color: white;
-            border-color: var(--accent-color);
+            display: none;
+            width: 100%;
+            max-width: 600px;
         }
 
         button.process-btn {
+            width: 100%;
+            padding: 12px;
             background: var(--primary-color);
             color: white;
-            border-color: var(--primary-color);
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
         }
+        button.process-btn:hover { opacity: 0.9; }
 
-        /* Editor Area (Before) */
+        /* Editor Area */
         #editor-container {
             position: relative;
             max-width: 100%;
             margin-bottom: 40px;
-            display: none; /* 画像読み込み後に表示 */
+            display: none;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
             user-select: none;
-            touch-action: none; /* スクロール防止 */
+            touch-action: none;
         }
+        #preview-img { display: block; max-width: 100%; height: auto; pointer-events: none; }
 
-        #preview-img {
-            display: block;
-            max-width: 100%;
-            height: auto;
-            pointer-events: none;
-        }
-
-        /* Cutting Lines */
+        /* Lines (Horizontal) */
         .cut-line {
             position: absolute;
             background-color: var(--line-color);
             z-index: 10;
-        }
-
-        /* Horizontal Split Mode (Vertical Lines) */
-        .cut-line.vertical {
-            top: 0;
-            bottom: 0;
-            width: 4px;
-            transform: translateX(-2px);
-            cursor: col-resize;
-        }
-
-        /* Vertical Split Mode (Horizontal Lines) */
-        .cut-line.horizontal {
-            left: 0;
-            right: 0;
-            height: 4px;
+            left: 0; right: 0; height: 4px;
             transform: translateY(-2px);
             cursor: row-resize;
         }
-
         .cut-line::after {
-            content: '';
-            position: absolute;
-            background: white;
-            border: 2px solid var(--line-color);
-            border-radius: 50%;
-            width: 16px;
-            height: 16px;
-            z-index: 11;
-        }
-        
-        /* Handle position for vertical lines */
-        .cut-line.vertical::after {
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            content: ''; position: absolute;
+            background: white; border: 2px solid var(--line-color);
+            border-radius: 50%; width: 16px; height: 16px;
+            left: 50%; top: 50%; transform: translate(-50%, -50%);
         }
 
-        /* Handle position for horizontal lines */
-        .cut-line.horizontal::after {
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-        }
-
-        /* Result Area (After) */
-        #result-area {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
+        /* Result Area */
+        #result-container {
             width: 100%;
             max-width: 800px;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        #all-download-area {
+            width: 100%;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .all-dl-btn {
+            display: inline-block;
+            background-color: var(--all-dl-color);
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 50px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.1s;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            margin-bottom: 15px;
+        }
+        .all-dl-btn:active { transform: scale(0.98); }
+
+        .warning-box {
+            background-color: var(--warning-bg);
+            border: 1px solid #ffeeba;
+            color: var(--warning-text);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: left;
+            font-size: 13px;
+            line-height: 1.6;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        .warning-title { font-weight: bold; margin-bottom: 5px; font-size: 14px; }
+
+        #result-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
             justify-content: center;
         }
 
@@ -186,95 +158,93 @@
             padding: 10px;
             border-radius: 8px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            width: 160px; /* 固定幅 */
         }
-
         .result-item img {
-            max-width: 150px;
-            max-height: 150px;
-            object-fit: contain;
-            margin-bottom: 10px;
+            width: 100%;
+            height: auto;
+            object-fit: contain; margin-bottom: 10px;
             border: 1px solid #eee;
         }
-
-        .download-btn {
+        
+        .action-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
             text-decoration: none;
             background: var(--accent-color);
             color: white;
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-size: 12px;
+            padding: 10px 0;
+            border-radius: 6px;
+            font-size: 13px;
             font-weight: bold;
+            border: none;
+            cursor: pointer;
         }
-
-        .download-btn:hover {
-            opacity: 0.9;
-        }
-
-        /* Helper for mobile layout of results */
-        .grid-vertical {
-            flex-direction: column;
-        }
-        
-        .grid-horizontal {
-            flex-direction: row;
-        }
+        .action-btn:hover { opacity: 0.9; }
 
     </style>
 </head>
 <body>
 
-    <h1>画像4分割ツール</h1>
-    <p class="desc">画像をアップロードし、線を動かして好きな位置でカットできます。</p>
+    <h1>画像4分割ツール（横カット）</h1>
+    <p class="desc">画像をアップロードすると横線が表示されます。<br>線を上下に動かして「分割して出力」を押してください。</p>
 
-    <!-- Upload Area -->
+    <!-- Upload -->
     <div id="drop-zone">
         <p>画像をここにドロップ</p>
-        <p style="font-size:12px; font-weight:normal; margin-top:5px;">またはクリックして選択</p>
-        <input type="file" id="file-input" accept="image/*">
+        <p style="font-size:12px; margin-top:5px;">またはクリックして選択</p>
+        <input type="file" id="file-input" accept="image/*" style="display:none;">
     </div>
 
     <!-- Controls -->
     <div class="controls" id="controls">
-        <button id="mode-v-btn" class="active">横に並べる (縦線)</button>
-        <button id="mode-h-btn">縦に並べる (横線)</button>
         <button id="process-btn" class="process-btn">分割して出力</button>
     </div>
 
-    <!-- Editor (Before) -->
+    <!-- Editor -->
     <div id="editor-container">
         <img id="preview-img" src="" alt="Source">
-        <!-- Lines will be injected here via JS -->
     </div>
 
-    <!-- Result (After) -->
-    <div id="result-area"></div>
+    <!-- Result -->
+    <div id="result-container">
+        
+        <div id="all-download-area">
+            <button id="download-all-btn" class="all-dl-btn">📥 4枚まとめて保存（PC推奨）</button>
+            
+            <div class="warning-box">
+                <div class="warning-title">⚠️ スマホで写真フォルダに入れたい場合</div>
+                スマホでは「まとめて保存」だと「ファイル」アプリに入ることがあります。<br>
+                確実に写真フォルダ（カメラロール）に入れたい場合は、<strong>下のボタンを押して「画像を保存」を選ぶ</strong>か、<strong>画像を長押しして保存</strong>してください。
+            </div>
+        </div>
+        
+        <!-- Individual Images -->
+        <div id="result-items"></div>
+    </div>
 
     <script>
-        // DOM Elements
         const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('file-input');
         const controls = document.getElementById('controls');
         const editorContainer = document.getElementById('editor-container');
         const previewImg = document.getElementById('preview-img');
-        const resultArea = document.getElementById('result-area');
-        
-        const modeVBtn = document.getElementById('mode-v-btn'); // Vertical Lines (Result: Horizontal row)
-        const modeHBtn = document.getElementById('mode-h-btn'); // Horizontal Lines (Result: Vertical stack)
         const processBtn = document.getElementById('process-btn');
+        const resultContainer = document.getElementById('result-container');
+        const resultItems = document.getElementById('result-items');
+        const downloadAllBtn = document.getElementById('download-all-btn');
 
-        // State
-        let currentImage = null; // Image object
-        let splitMode = 'vertical'; // 'vertical' (lines) or 'horizontal' (lines)
-        let linePositions = [25, 50, 75]; // Percentages
+        let currentImage = null;
+        let linePositions = [25, 50, 75]; 
         let isDragging = false;
         let activeLineIndex = -1;
+        let generatedImageUrls = [];
 
-        // --- Event Listeners: Upload ---
+        // --- Upload ---
         dropZone.addEventListener('click', () => fileInput.click());
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('dragover');
-        });
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
         dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
@@ -285,200 +255,160 @@
 
         function handleFile(file) {
             if (!file || !file.type.startsWith('image/')) return;
-            
             const reader = new FileReader();
             reader.onload = (e) => {
                 previewImg.src = e.target.result;
                 currentImage = new Image();
                 currentImage.src = e.target.result;
                 currentImage.onload = () => {
-                    controls.style.display = 'flex';
+                    controls.style.display = 'block'; 
                     editorContainer.style.display = 'block';
-                    resultArea.innerHTML = ''; // Clear old results
+                    resultContainer.style.display = 'none';
                     initLines();
                 };
             };
             reader.readAsDataURL(file);
         }
 
-        // --- Event Listeners: Mode Switch ---
-        modeVBtn.addEventListener('click', () => {
-            splitMode = 'vertical';
-            modeVBtn.classList.add('active');
-            modeHBtn.classList.remove('active');
-            initLines();
-        });
-
-        modeHBtn.addEventListener('click', () => {
-            splitMode = 'horizontal';
-            modeHBtn.classList.add('active');
-            modeVBtn.classList.remove('active');
-            initLines();
-        });
-
-        // --- Editor Logic (Lines) ---
+        // --- Lines ---
         function initLines() {
-            // Clear existing lines
-            const existingLines = document.querySelectorAll('.cut-line');
-            existingLines.forEach(el => el.remove());
-
-            // Reset positions evenly
+            document.querySelectorAll('.cut-line').forEach(el => el.remove());
             linePositions = [25, 50, 75];
-
-            // Create 3 lines
-            for (let i = 0; i < 3; i++) {
-                createLineElement(i);
-            }
+            for (let i = 0; i < 3; i++) createLineElement(i);
         }
 
         function createLineElement(index) {
             const line = document.createElement('div');
             line.classList.add('cut-line');
-            line.classList.add(splitMode); // 'vertical' or 'horizontal'
-            
-            // Set initial position
-            updateLineCSS(line, linePositions[index]);
-
-            // Add Mouse/Touch Events
+            line.style.top = `${linePositions[index]}%`;
             line.addEventListener('mousedown', (e) => startDrag(e, index));
             line.addEventListener('touchstart', (e) => startDrag(e, index), {passive: false});
-
             editorContainer.appendChild(line);
         }
 
-        function updateLineCSS(element, percentage) {
-            if (splitMode === 'vertical') {
-                element.style.left = `${percentage}%`;
-                element.style.top = '0';
-                element.style.bottom = '0';
-                element.style.height = '100%';
-                element.style.width = '4px';
-            } else {
-                element.style.top = `${percentage}%`;
-                element.style.left = '0';
-                element.style.right = '0';
-                element.style.width = '100%';
-                element.style.height = '4px';
-            }
-        }
-
-        // --- Dragging Logic ---
-        function startDrag(e, index) {
-            e.preventDefault();
-            isDragging = true;
-            activeLineIndex = index;
-        }
-
+        // --- Drag ---
         window.addEventListener('mousemove', onDrag);
         window.addEventListener('touchmove', onDrag, {passive: false});
         window.addEventListener('mouseup', endDrag);
         window.addEventListener('touchend', endDrag);
 
+        function startDrag(e, index) { e.preventDefault(); isDragging = true; activeLineIndex = index; }
+        
         function onDrag(e) {
             if (!isDragging || activeLineIndex === -1) return;
-            
-            // Get pointer position relative to container
             const rect = editorContainer.getBoundingClientRect();
-            let clientX = e.clientX || e.touches[0].clientX;
             let clientY = e.clientY || e.touches[0].clientY;
-
-            let percentage;
-
-            if (splitMode === 'vertical') {
-                let x = clientX - rect.left;
-                percentage = (x / rect.width) * 100;
-            } else {
-                let y = clientY - rect.top;
-                percentage = (y / rect.height) * 100;
-            }
-
-            // Clamp between 0 and 100
-            percentage = Math.max(0, Math.min(100, percentage));
-
-            // Update state
+            let y = clientY - rect.top;
+            let percentage = Math.max(0, Math.min(100, (y / rect.height) * 100));
             linePositions[activeLineIndex] = percentage;
-
-            // Update DOM
-            const lines = document.querySelectorAll('.cut-line');
-            updateLineCSS(lines[activeLineIndex], percentage);
+            document.querySelectorAll('.cut-line')[activeLineIndex].style.top = `${percentage}%`;
         }
+        function endDrag() { isDragging = false; activeLineIndex = -1; }
 
-        function endDrag() {
-            isDragging = false;
-            activeLineIndex = -1;
-        }
-
-        // --- Process & Split Logic ---
+        // --- Process ---
         processBtn.addEventListener('click', () => {
             if (!currentImage) return;
-
-            resultArea.innerHTML = ''; // Clear previous
-
-            // Sort positions to ensure correct order
-            const cuts = [...linePositions].sort((a, b) => a - b);
+            resultItems.innerHTML = ''; 
+            generatedImageUrls = [];
             
-            // Define segments: 0 -> cut1, cut1 -> cut2, cut2 -> cut3, cut3 -> 100
+            const cuts = [...linePositions].sort((a, b) => a - b);
             const segments = [
-                { start: 0, end: cuts[0] },
-                { start: cuts[0], end: cuts[1] },
-                { start: cuts[1], end: cuts[2] },
-                { start: cuts[2], end: 100 }
+                { start: 0, end: cuts[0] }, { start: cuts[0], end: cuts[1] },
+                { start: cuts[1], end: cuts[2] }, { start: cuts[2], end: 100 }
             ];
 
-            const imgWidth = currentImage.naturalWidth;
-            const imgHeight = currentImage.naturalHeight;
+            const w = currentImage.naturalWidth;
+            const h = currentImage.naturalHeight;
 
             segments.forEach((seg, i) => {
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
+                const sy = (seg.start / 100) * h;
+                const sh = ((seg.end - seg.start) / 100) * h;
+                
+                canvas.width = w; canvas.height = sh;
+                ctx.drawImage(currentImage, 0, sy, w, sh, 0, 0, w, sh);
 
-                let sx, sy, sWidth, sHeight;
-
-                if (splitMode === 'vertical') {
-                    // Splitting width-wise
-                    sx = (seg.start / 100) * imgWidth;
-                    sy = 0;
-                    sWidth = ((seg.end - seg.start) / 100) * imgWidth;
-                    sHeight = imgHeight;
-                } else {
-                    // Splitting height-wise
-                    sx = 0;
-                    sy = (seg.start / 100) * imgHeight;
-                    sWidth = imgWidth;
-                    sHeight = ((seg.end - seg.start) / 100) * imgHeight;
-                }
-
-                canvas.width = sWidth;
-                canvas.height = sHeight;
-
-                ctx.drawImage(currentImage, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
-
-                // Create Result UI
                 const dataUrl = canvas.toDataURL('image/png');
+                generatedImageUrls.push(dataUrl);
                 createResultItem(dataUrl, i + 1);
             });
-            
-            // Scroll to results
-            resultArea.scrollIntoView({ behavior: 'smooth' });
+
+            resultContainer.style.display = 'flex';
+            resultContainer.scrollIntoView({ behavior: 'smooth' });
         });
 
-        function createResultItem(dataUrl, index) {
+        // --- Output Item Creation with Share API ---
+        async function createResultItem(dataUrl, index) {
             const div = document.createElement('div');
             div.className = 'result-item';
 
             const img = document.createElement('img');
             img.src = dataUrl;
 
-            const link = document.createElement('a');
-            link.href = dataUrl;
-            link.download = `split_image_${index}.png`;
-            link.innerText = `${index}枚目をダウンロード`;
-            link.className = 'download-btn';
+            // ボタン作成
+            const btn = document.createElement('button');
+            btn.className = 'action-btn';
+            
+            // Web Share API (スマホでファイル共有ができるか) のチェック
+            const isShareSupported = navigator.canShare && navigator.share;
+
+            if (isShareSupported) {
+                btn.innerText = `📱 写真アプリに保存`;
+                btn.onclick = async () => {
+                    try {
+                        // DataURLをBlob→Fileに変換
+                        const blob = await (await fetch(dataUrl)).blob();
+                        const file = new File([blob], `split_image_${index}.png`, { type: 'image/png' });
+                        
+                        if (navigator.canShare({ files: [file] })) {
+                            await navigator.share({
+                                files: [file],
+                                title: '分割画像',
+                                text: ''
+                            });
+                        } else {
+                            // 共有できないファイル形式の場合のフォールバック
+                            forceDownload(dataUrl, index);
+                        }
+                    } catch (err) {
+                        console.log('Share canceled or failed', err);
+                    }
+                };
+            } else {
+                // PCなどの場合
+                btn.innerText = `💾 画像${index}を保存`;
+                btn.onclick = () => forceDownload(dataUrl, index);
+            }
 
             div.appendChild(img);
-            div.appendChild(link);
-            resultArea.appendChild(div);
+            div.appendChild(btn);
+            resultItems.appendChild(div);
         }
+
+        // --- Helper: Force Download (Classic way) ---
+        function forceDownload(url, index) {
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `split_image_${index}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // --- Robust Download All ---
+        const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+        downloadAllBtn.addEventListener('click', async () => {
+            if (generatedImageUrls.length === 0) return;
+            
+            alert("1秒ごとに画像を保存します。\nスマホの場合は「ファイル」アプリに保存されることがあります。");
+
+            for (let i = 0; i < generatedImageUrls.length; i++) {
+                forceDownload(generatedImageUrls[i], i + 1);
+                await delay(1000);
+            }
+        });
 
     </script>
 </body>
